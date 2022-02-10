@@ -24,6 +24,11 @@
     - "{{ nextcloud_data_directory }}/nextcloud"
     - "{{ nextcloud_data_directory }}/mariadb"
 
+- name: "network"
+  docker_network:
+    name: backend
+    state: "present"
+
 - name: Nextcloud Docker Container
   docker_container:
     name: nextcloud
@@ -36,8 +41,14 @@
       - "{{ nextcloud_user_directory }}:/var/www/html/data/{{nextcloud_username}}/files:rw"
       - "{{ downloads_root }}:/media:rw"
     ports:
-      - "{{ nextcloud_port }}:80"
+      - "8910:80"
+    # expose:
+    #   - "80"
+    networks:
+      - name: "backend"
     env:
+      VIRTUAL_HOST: "nc.seismo.maxkottchen.de"
+      VIRTUAL_PORT: "8910"
       MYSQL_HOST: "mariadb"
       MYSQL_DATABASE: "nextcloud"
       MYSQL_USER: "{{ nextcloud_sql_user }}"
@@ -49,9 +60,33 @@
       NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_hostname }}.{{ ansible_nas_domain }} {{ ansible_host }}"
     restart_policy: unless-stopped
     memory: "{{ nextcloud_memory }}"
+    # labels:
+    #   traefik.enable: "{{ nextcloud_available_externally }}"
+    #   traefik.http.routers.nextcloud.rule: "Host(`{{ nextcloud_hostname }}.{{ ansible_nas_domain }}`)"
+    #   traefik.http.routers.nextcloud.tls: "true"
+    #   traefik.http.routers.nextcloud.tls.certresolver: "letsencrypt"
+    #   traefik.http.routers.nextcloud.tls.domains[0].main: "{{ ansible_nas_domain }}"
+    #   traefik.http.routers.nextcloud.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
+    #   traefik.http.services.nextcloud.loadbalancer.server.port: "80"
+
+- name: NGINX
+  docker_container:
+    name: nginx
+    image: jwilder/nginx-proxy:latest
+    pull: true
+    links:
+      - nextcloud:nextcloud
+    volumes:
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
+    ports:
+      - "{{ nextcloud_port }}:80"
+    networks:
+      - name: "backend"
+    # env:
+    restart_policy: unless-stopped
     labels:
       traefik.enable: "{{ nextcloud_available_externally }}"
-      traefik.http.routers.nextcloud.rule: "Host(`{{ nextcloud_hostname }}.{{ ansible_nas_domain }}`)"
+      traefik.http.routers.nextcloud.rule: "Host(`nc.{{ ansible_nas_domain }}`)"
       traefik.http.routers.nextcloud.tls: "true"
       traefik.http.routers.nextcloud.tls.certresolver: "letsencrypt"
       traefik.http.routers.nextcloud.tls.domains[0].main: "{{ ansible_nas_domain }}"
