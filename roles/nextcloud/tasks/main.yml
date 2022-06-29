@@ -57,3 +57,9 @@
       traefik.http.routers.nextcloud.tls.domains[0].main: "{{ ansible_nas_domain }}"
       traefik.http.routers.nextcloud.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
       traefik.http.services.nextcloud.loadbalancer.server.port: "80"
+
+- name: Schedule a Nextcloud cron job
+  cron:
+      name: Nextcloud Cron
+      minute: '*/15'
+      job: 'docker exec -u www-data nextcloud php -f cron.php'
