@@ -343,6 +343,10 @@
         - photoprism
       when: (photoprism_enabled | default(False))
 
+    - role: netcup_ddns
+      tags:
+        - netcup_ddns
+      when: (netcup_ddns_enabled | default(False))
   tasks:
     - import_tasks: tasks/thelounge.yml
       when: (thelounge_enabled | default(False))

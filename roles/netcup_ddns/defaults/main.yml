@@ -1,0 +1,16 @@
+---
+netcup_ddns_enabled: false
+
+# Data directory for config file
+netcup_data_directory: "{{ docker_home }}/netcup_ddns"
+
+# Your domain name
+netcup_ddns_host: "{{ ansible_nas_domain }}"
+
+# API Credentials
+netcup_ddns_customer_number: 123456
+netcup_ddns_api_key: "abcdabcdabcd123412341234"
+netcup_ddns_api_password: ""
+
+# specs
+netcup_memory: 512MB

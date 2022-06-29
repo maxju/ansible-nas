@@ -1,0 +1,28 @@
+---
+- name: Check for deprecated API key
+  fail:
+    msg: "Using a netcup global API key is no longer supported. Please unset netcup_api_key and set netcup_token"
+  when: netcup_api_key is defined
+
+- name: Create netcup Dynamic DNS Directories
+  file:
+    path: "{{ netcup_data_directory }}"
+    state: directory
+
+- name: Template netcup Dynamic DNS config.yml with scoped token
+  template:
+    src: config.yml
+    dest: "{{ netcup_data_directory }}/config.yml"
+  register: template_files_result
+
+
+- name: netcup Dynamic DNS Container
+  docker_container:
+    name: netcup-ddns
+    image: ghcr.io/hentra/dyndns-netcup-go:latest
+    pull: true
+    volumes:
+      - "{{ netcup_data_directory }}/config.yml:/config.yml"
+    restart_policy: unless-stopped
+    memory: "{{ netcup_memory }}"
+    recreate: "{{ template_files_result is changed }}"
