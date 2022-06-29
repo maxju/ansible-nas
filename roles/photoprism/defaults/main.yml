@@ -1,0 +1,30 @@
+---
+photoprism_enabled: false
+photoprism_available_externally: "false"
+
+# directories
+photoprism_data_directory: "{{ docker_home }}/photoprism"
+photoprism_user_directory: "{{ docker_home }}/{{ photoprism_username }}"
+
+# network
+photoprism_port: "2342"
+photoprism_hostname: "photo"
+
+# username / passwords
+photoprism_sql_user: "photoprism-user"
+photoprism_sql_password: "photoprism-pass"
+photoprism_sql_root_password: "photoprism-secret"
+
+# user
+photoprism_uid: "1000"
+photoprism_gid: "1000"
+
+# specs
+photoprism_memory: 1g
+photoprism_mysql_memory: 1g
+
+photoprism_file_size: "10000"
+photoprism_jpeg_quality: "85"
+
+photoprism_disable_webdav: "false"
+photoprism_disable_raw: "false"

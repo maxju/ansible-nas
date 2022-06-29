@@ -1,0 +1,85 @@
+---
+- name: Make sure the MariaDB container is created and running
+  docker_container:
+    name: "photoprism-mariadb"
+    image: "mariadb:latest"
+    pull: yes
+    command: "--transaction-isolation=READ-COMMITTED --binlog-format=ROW --skip-innodb-read-only-compressed --innodb-read-only-compressed=OFF"
+    state: 'started'
+    env:
+      MYSQL_ROOT_PASSWORD: "{{ photoprism_sql_root_password }}"
+      MYSQL_DATABASE: "photoprism"
+      MYSQL_USER: "{{ photoprism_sql_user }}"
+      MYSQL_PASSWORD: "{{ photoprism_sql_password }}"
+    volumes:
+      - "{{ photoprism_data_directory }}/mariadb/mysql:/var/lib/mysql:rw"
+    restart_policy: unless-stopped
+    memory: "{{ photoprism_mysql_memory }}"
+
+- name: Create photoprism directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ photoprism_data_directory }}/photoprism"
+    - "{{ photoprism_data_directory }}/mariadb"
+
+- name: photoprism Docker Container
+  docker_container:
+    name: photoprism
+    image: photoprism/photoprism:latest
+    pull: true
+    links:
+      - photoprism-mariadb:mariadb
+    volumes:
+      - "{{ photoprism_data_directory }}/photoprism:/photoprism/storage:rw"
+      - "{{ photoprism_user_directory }}:/photoprism/originals:rw"
+    ports:
+      - "{{ photoprism_port }}:2342"
+    env:
+      PHOTOPRISM_SITE_URL: "https://{{ photoprism_hostname }}.{{ ansible_nas_domain }}/"  # public server URL incl http:// or https:// and /path, :port is optional
+      PHOTOPRISM_ORIGINALS_LIMIT: "{{ photoprism_file_size }}"               # file size limit for originals in MB (increase for high-res video)
+      PHOTOPRISM_HTTP_COMPRESSION: "gzip"            # improves transfer speed and bandwidth utilization (none or gzip)
+      PHOTOPRISM_LOG_LEVEL: "info"                   # log level: trace, debug, info, warning, error, fatal, or panic
+      PHOTOPRISM_PUBLIC: "false"                     # no authentication required (disables password protection)
+      PHOTOPRISM_READONLY: "false"                   # do not modify originals directory (reduced functionality)
+      PHOTOPRISM_EXPERIMENTAL: "false"               # enables experimental features
+      PHOTOPRISM_DISABLE_CHOWN: "false"              # disables storage permission updates on startup
+      PHOTOPRISM_DISABLE_WEBDAV: "{{ photoprism_disable_webdav }}"             # disables built-in WebDAV server
+      PHOTOPRISM_DISABLE_SETTINGS: "false"           # disables settings UI and API
+      PHOTOPRISM_DISABLE_TENSORFLOW: "false"         # disables all features depending on TensorFlow
+      PHOTOPRISM_DISABLE_FACES: "false"              # disables facial recognition
+      PHOTOPRISM_DISABLE_CLASSIFICATION: "false"     # disables image classification
+      PHOTOPRISM_DISABLE_RAW: "{{ photoprism_disable_raw }}"                # disables indexing and conversion of RAW files
+      PHOTOPRISM_RAW_PRESETS: "false"                # enables applying user presets when converting RAW files (reduces performance)
+      PHOTOPRISM_JPEG_QUALITY: "{{photoprism_jpeg_quality}}"                    # image quality, a higher value reduces compression (25-100)
+      PHOTOPRISM_DETECT_NSFW: "false"                # flag photos as private that MAY be offensive (requires TensorFlow)
+      PHOTOPRISM_UPLOAD_NSFW: "true"                 # allows uploads that MAY be offensive
+      # PHOTOPRISM_DATABASE_DRIVER: "sqlite"         # SQLite is an embedded database that doesn't require a server
+      PHOTOPRISM_DATABASE_DRIVER: "mysql"            # use MariaDB 10.5+ or MySQL 8+ instead of SQLite for improved performance
+      PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"     # MariaDB or MySQL database server (hostname:port)
+      PHOTOPRISM_DATABASE_NAME: "photoprism"         # MariaDB or MySQL database schema name
+      PHOTOPRISM_DATABASE_USER: "{{ photoprism_sql_user }}"         # MariaDB or MySQL database user name
+      PHOTOPRISM_DATABASE_PASSWORD: "{{ photoprism_sql_password }}"      # MariaDB or MySQL database user password
+      PHOTOPRISM_SITE_CAPTION: "SEISMO"
+      PHOTOPRISM_SITE_DESCRIPTION: ""                # meta site description
+      PHOTOPRISM_SITE_AUTHOR: "Maxkottchen"                     # meta site author
+      ## Run/install on first startup (options: update, gpu, tensorflow, davfs, clitools, clean):
+      # PHOTOPRISM_INIT: "gpu tensorflow"
+      ## Hardware Video Transcoding (for sponsors only due to high maintenance and support costs):
+      # PHOTOPRISM_FFMPEG_ENCODER: "software"        # FFmpeg encoder ("software", "intel", "nvidia", "apple", "raspberry")
+      # PHOTOPRISM_FFMPEG_BITRATE: "32"              # FFmpeg encoding bitrate limit in Mbit/s (default: 50)
+      ## Switch to a non-root user after initialization (supported IDs are 33, 50-99, 500-600, and 900-1200):
+      PHOTOPRISM_UID: "{{ photoprism_uid }}"
+      PHOTOPRISM_GID: "{{ photoprism_gid }}"
+      # PHOTOPRISM_UMASK: 0000
+    restart_policy: unless-stopped
+    memory: "{{ photoprism_memory }}"
+    labels:
+      traefik.enable: "{{ photoprism_available_externally }}"
+      traefik.http.routers.photoprism.rule: "Host(`{{ photoprism_hostname }}.{{ ansible_nas_domain }}`)"
+      traefik.http.routers.photoprism.tls: "true"
+      traefik.http.routers.photoprism.tls.certresolver: "letsencrypt"
+      traefik.http.routers.photoprism.tls.domains[0].main: "{{ ansible_nas_domain }}"
+      traefik.http.routers.photoprism.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
+      traefik.http.services.photoprism.loadbalancer.server.port: "2342"
