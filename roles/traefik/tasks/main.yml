@@ -27,3 +27,12 @@
     restart_policy: unless-stopped
     memory: "{{ traefik_memory }}"
     recreate: "{{ template_config is changed }}"
+    labels:      
+      traefik.enable: "{{traefik_available_externally}}"
+      traefik.http.routers.traefik.rule: "Host(`traefik.{{ ansible_nas_domain }}`, `traefik.{{ ansible_nas_domain_alt }}`)"
+      traefik.http.routers.traefik.tls.certresolver: "letsencrypt"
+      traefik.http.routers.traefik.tls.domains[0].main: "{{ ansible_nas_domain }}"
+      traefik.http.routers.traefik.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
+      traefik.http.services.traefik.loadbalancer.server.port: "8083"
+      traefik.http.middlewares.lan-ip-whitelist.ipwhitelist.sourcerange: "127.0.0.1/32, {{ ansible_nas_subnet }}"
+      traefik.http.routers.traefik.middlewares: "lan-ip-whitelist@docker"
