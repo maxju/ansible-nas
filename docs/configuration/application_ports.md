@@ -23,6 +23,7 @@ By default, applications can be found on the ports listed below.
 | Emby            | 8096    | Bridge  | HTTP           |
 | Emby            | 8096    | Bridge  | HTTP           |
 | Emby            | 8920    | Bridge  | HTTPS          |
+| EspHome         | 6052    | Bridge  | HTTP           |
 | Firefly III     | 8066    | Bridge  | HTTP           |
 | Fresh RSS       | 8089    | Bridge  | HTTP           |
 | get_iplayer     | 8182    | Bridge  | HTTP           |
@@ -67,6 +68,7 @@ By default, applications can be found on the ports listed below.
 | openHAB         | 7778    | Host    | HTTPS          |
 | Organizr        | 10081   | Bridge  | HTTP           |
 | Organizr        | 10444   | Bridge  | HTTPS          |
+| Overseerr       | 5055    | Bridge  | HTTP           |
 | Paperless_ng    | 16922   | Bridge  | HTTP           |
 | Piwigo          | 16923   | Bridge  | HTTP           |
 | Plex            | 32400   | Bridge  | HTTP           |
@@ -85,6 +87,7 @@ By default, applications can be found on the ports listed below.
 | Syncthing P2P   | 22000   | Host    |                |
 | Tautulli        | 8185    | Bridge  | HTTP           |
 | The Lounge      | 9000    | Bridge  | HTTP           |
+| TiddlyWiki      | 8092    | Bridge  | HTTP           |
 | Time Machine    | 10445   | Bridge  | SMB            |
 | Traefik         | 8083    | Host    | HTTP Admin     |
 | Transmission    | 9091    | Bridge  | HTTP w/VPN     |
