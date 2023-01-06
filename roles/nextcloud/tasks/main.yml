@@ -1,21 +1,4 @@
 ---
-- name: Make sure the MariaDB container is created and running
-  docker_container:
-    name: "nextcloud-mariadb"
-    image: "{{ nextcloud_mysql_image }}"
-    pull: yes
-    command: "--transaction-isolation=READ-COMMITTED --binlog-format=ROW --skip-innodb-read-only-compressed --innodb-read-only-compressed=OFF"
-    state: 'started'
-    env:
-      MYSQL_ROOT_PASSWORD: "{{ nextcloud_sql_root_password }}"
-      MYSQL_DATABASE: "nextcloud"
-      MYSQL_USER: "{{ nextcloud_sql_user }}"
-      MYSQL_PASSWORD: "{{ nextcloud_sql_password }}"
-    volumes:
-      - "{{ nextcloud_data_directory }}/mariadb/mysql:/var/lib/mysql:rw"
-    restart_policy: unless-stopped
-    memory: "{{ nextcloud_mysql_memory }}"
-
 - name: Create Nextcloud directories
   file:
     path: "{{ item }}"
@@ -24,44 +7,18 @@
     - "{{ nextcloud_data_directory }}/nextcloud"
     - "{{ nextcloud_data_directory }}/mariadb"
 
-- name: Nextcloud Docker Container
-  docker_container:
-    name: nextcloud
-    image: "{{ nextcloud_image }}"
-    pull: true
-    links:
-      - nextcloud-mariadb:mariadb
-    volumes:
-      - "{{ nextcloud_data_directory }}/nextcloud:/var/www/html:rw"
-      - "{{ nextcloud_user_directory }}:/var/www/html/data/{{nextcloud_username}}/files:rw"
-      - "{{ downloads_root }}:/media:rw"
-    ports:
-      - "{{ nextcloud_port }}:80"
-    env:
-      MYSQL_HOST: "mariadb"
-      MYSQL_DATABASE: "nextcloud"
-      MYSQL_USER: "{{ nextcloud_sql_user }}"
-      MYSQL_PASSWORD: "{{ nextcloud_sql_password }}"
-      PHP_MEMORY_LIMIT: "{{ nextcloud_memory}}"
-      PHP_UPLOAD_LIMIT: "{{nextcloud_upload}}"
-      NEXTCLOUD_ADMIN_USER: "{{nextcloud_admin_user}}"
-      NEXTCLOUD_ADMIN_PASSWORD: "{{nextcloud_admin_password}}"
-      NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_hostname }}.{{ ansible_nas_domain }} {{ ansible_nas_domain }} {{ nextcloud_hostname }}.{{ ansible_nas_domain_alt }} {{ ansible_nas_domain_alt }}"
-    restart_policy: unless-stopped
-    memory: "{{ nextcloud_memory }}"
-    labels:
-      traefik.enable: "{{ nextcloud_available_externally | string}}"
-      traefik.http.routers.nextcloud.rule: "Host(`{{ nextcloud_hostname }}.{{ ansible_nas_domain }}`, `{{ ansible_nas_domain }}`, `{{ nextcloud_hostname }}.{{ ansible_nas_domain_alt }}`, `{{ ansible_nas_domain_alt }}`)"
-      traefik.http.routers.nextcloud.tls: "true"
-      traefik.http.routers.nextcloud.tls.certresolver: "letsencrypt"
-      traefik.http.routers.nextcloud.tls.domains[0].main: "{{ ansible_nas_domain }}"
-      traefik.http.routers.nextcloud.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
-      traefik.http.routers.nextcloud.tls.domains[1].main: "{{ ansible_nas_domain_alt }}"
-      traefik.http.routers.nextcloud.tls.domains[1].sans: "*.{{ ansible_nas_domain_alt }}"
-      traefik.http.services.nextcloud.loadbalancer.server.port: "80"
+- name: Copying required files
+  template: src={{item.src}} dest={{item.dest}}
+  with_items:
+    - { src: '../compose/docker-compose.yml', dest: '{{ docker_compose_dir }}/nc' }
+    - { src: '../compose/Dockerfile', dest: '{{ docker_compose_dir }}/nc' }
 
+- name: Nextcloud Docker-Compose Container
+  docker_compose:
+    project_src: "{{ docker_compose_dir }}/nc"
+    build: "true"
 - name: Schedule a Nextcloud cron job
   cron:
       name: Nextcloud Cron
       minute: '*/15'
-      job: 'docker exec -u www-data nextcloud php -f cron.php'
+      job: 'docker exec -u www-data nc_nextcloud_1 php -f cron.php'

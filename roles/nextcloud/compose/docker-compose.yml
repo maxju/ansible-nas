@@ -1,0 +1,50 @@
+      version: "3"
+      services:
+        nextcloud-mariadb:
+          image: "{{ nextcloud_mysql_image }}"
+          command: "--transaction-isolation=READ-COMMITTED --binlog-format=ROW --skip-innodb-read-only-compressed --innodb-read-only-compressed=OFF"
+          environment:
+            MYSQL_ROOT_PASSWORD: "{{ nextcloud_sql_root_password }}"
+            MYSQL_DATABASE: "nextcloud"
+            MYSQL_USER: "{{ nextcloud_sql_user }}"
+            MYSQL_PASSWORD: "{{ nextcloud_sql_password }}"
+          volumes:
+            - "{{ nextcloud_data_directory }}/mariadb/mysql:/var/lib/mysql:rw"
+          restart: unless-stopped
+
+        nextcloud:
+          depends_on:
+            - nextcloud-mariadb
+          build: .
+          volumes:
+            - "{{ nextcloud_data_directory }}/nextcloud:/var/www/html:rw"
+            - "{{ nextcloud_user_directory }}:/var/www/html/data/{{nextcloud_username}}/files:rw"
+            - "{{ downloads_root }}:/media:rw"
+          ports:
+            - "{{ nextcloud_port }}:80"
+          environment:
+            MYSQL_HOST: "mariadb"
+            MYSQL_DATABASE: "nextcloud"
+            MYSQL_USER: "{{ nextcloud_sql_user }}"
+            MYSQL_PASSWORD: "{{ nextcloud_sql_password }}"
+            PHP_MEMORY_LIMIT: "{{ nextcloud_memory}}"
+            PHP_UPLOAD_LIMIT: "{{nextcloud_upload}}"
+            NEXTCLOUD_ADMIN_USER: "{{nextcloud_admin_user}}"
+            NEXTCLOUD_ADMIN_PASSWORD: "{{nextcloud_admin_password}}"
+            NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_hostname }}.{{ ansible_nas_domain }} {{ ansible_nas_domain }} {{ nextcloud_hostname }}.{{ ansible_nas_domain_alt }} {{ ansible_nas_domain_alt }}"
+          restart: unless-stopped
+          devices:
+           - /dev/dri:/dev/dri
+          # memory: "{{ nextcloud_memory }}"
+          labels:
+            traefik.enable: "{{ nextcloud_available_externally | string}}"
+            traefik.http.routers.nextcloud.rule: "Host(`{{ nextcloud_hostname }}.{{ ansible_nas_domain }}`, `{{ ansible_nas_domain }}`, `{{ nextcloud_hostname }}.{{ ansible_nas_domain_alt }}`, `{{ ansible_nas_domain_alt }}`)"
+            traefik.http.routers.nextcloud.tls: "true"
+            traefik.http.routers.nextcloud.tls.certresolver: "letsencrypt"
+            traefik.http.routers.nextcloud.tls.domains[0].main: "{{ ansible_nas_domain }}"
+            traefik.http.routers.nextcloud.tls.domains[0].sans: "*.{{ ansible_nas_domain }}"
+            traefik.http.routers.nextcloud.tls.domains[1].main: "{{ ansible_nas_domain_alt }}"
+            traefik.http.routers.nextcloud.tls.domains[1].sans: "*.{{ ansible_nas_domain_alt }}"
+            traefik.http.services.nextcloud.loadbalancer.server.port: "80"
+          links:
+            - nextcloud-mariadb:mariadb
