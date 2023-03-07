@@ -12,6 +12,7 @@
   with_items:
     - { src: '../compose/docker-compose.yml', dest: '{{ docker_compose_dir }}/nc' }
     - { src: '../compose/Dockerfile', dest: '{{ docker_compose_dir }}/nc' }
+    - { src: '../compose/start.sh', dest: '{{ docker_compose_dir }}/nc/start.sh' }
 
 - name: Nextcloud Docker-Compose Container
   docker_compose:

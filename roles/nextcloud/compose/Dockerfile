@@ -11,4 +11,15 @@ RUN set -ex; \
     ; \
     rm -rf /var/lib/apt/lists/*
     
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    apt-add-repository -y non-free && \
+    apt-get update && \
+    apt-get install -y intel-media-va-driver-non-free ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV NEXTCLOUD_UPDATE=1
+
+COPY start.sh /
+RUN ["chmod", "+x", "/start.sh"]
+CMD /start.sh
