@@ -17,7 +17,7 @@
 - name: Nextcloud Docker-Compose Container
   docker_compose:
     project_src: "{{ docker_compose_dir }}/nc"
-    build: "true"
+    build: true
 - name: Schedule a Nextcloud cron job
   cron:
       name: Nextcloud Cron
